@@ -293,6 +293,13 @@ def convert_text_styling(content: str) -> str:
         content
     )
     
+    # Convert #footnote[content] to \footnote{content}
+    content = re.sub(
+        r'#footnote\s*\[([^\]]+)\]', 
+        r'\\footnote{\1}', 
+        content
+    )
+
     return content
 
 def process_tex_comments(content: str) -> str:

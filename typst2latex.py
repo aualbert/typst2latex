@@ -12,6 +12,62 @@ import sys
 import argparse
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+import subprocess
+import tempfile
+
+def convert_math_with_pandoc(content: str) -> str:
+    """
+    Convert Typst math blocks to LaTeX using pandoc
+    Handles both inline math $...$ and display math blocks
+    """
+    
+    def convert_math_block(match):
+        math_content = match.group(0)
+        
+        try:
+            # Create a temporary file with the math content
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.typ', delete=False) as f:
+                f.write(math_content)
+                temp_input = f.name
+            
+            # Use pandoc to convert from typst to latex
+            result = subprocess.run(
+                ['pandoc', '-f', 'typst', '-t', 'latex', temp_input],
+                capture_output=True,
+                text=True,
+                timeout=10  # 10 second timeout
+            )
+            
+            # Clean up temp file
+            Path(temp_input).unlink()
+            
+            if result.returncode == 0:
+                return remove_trailing_newline(result.stdout)
+            else:
+                print(f"Pandoc error for math: {math_content[:100]}...")
+                return math_content
+        
+        except Exception as e:
+            print(f"Error converting math with pandoc: {e}")
+            return math_content  # Fallback to original
+    
+    # Convert math
+    content = re.sub(
+        r'\$(.*?)\$',
+        convert_math_block,
+        content,
+        flags=re.DOTALL
+    )
+    
+    return content
+
+def remove_trailing_newline(s: str) -> str:
+    """
+    Remove the last newline character from a string if it exists
+    """
+    if s.endswith('\n'):
+        return s[:-1]
+    return s
 
 def convert_figures(content: str) -> str:
     """
@@ -173,117 +229,6 @@ def process_tex_comments(content: str) -> str:
     
     return content
 
-
-# def convert_theorem_environments(content: str) -> str:
-#     """
-#     Convert Typst theorem-like environments to LaTeX with proper bracket balancing
-#     """
-    
-#     def find_balanced_brackets(text, start_pos):
-#         """
-#         Find the position of the closing bracket that balances the opening bracket at start_pos
-#         Returns (content, end_pos) or None if unbalanced
-#         """
-#         if start_pos >= len(text) or text[start_pos] != '[':
-#             return None
-            
-#         bracket_count = 1
-#         pos = start_pos + 1
-#         content_start = pos
-        
-#         while pos < len(text) and bracket_count > 0:
-#             if text[pos] == '[':
-#                 bracket_count += 1
-#             elif text[pos] == ']':
-#                 bracket_count -= 1
-#             pos += 1
-            
-#         if bracket_count == 0:
-#             content = text[content_start:pos-1]  # -1 to exclude the closing ]
-#             return content, pos
-#         else:
-#             return None
-    
-#     def convert_single_environment(match, env_name):
-#         """
-#         Convert a single theorem environment with proper bracket balancing
-#         """
-#         full_match = match.group(0)
-#         env_start = match.start()
-        
-#         # Find the opening bracket after the environment name
-#         bracket_pos = match.end() - len(full_match) + len(env_name) + 1  # +1 for #
-#         while bracket_pos < len(content) and content[bracket_pos].isspace():
-#             bracket_pos += 1
-            
-#         if bracket_pos >= len(content) or content[bracket_pos] != '[':
-#             return full_match  # No opening bracket found
-            
-#         # Extract balanced bracket content
-#         result = find_balanced_brackets(content, bracket_pos)
-#         if result is None:
-#             return full_match  # Unbalanced brackets
-            
-#         env_content, end_pos = result
-        
-#         # Replace with LaTeX environment
-#         latex_env = f'\\begin{{{env_name}}}\n{env_content}\n\\end{{{env_name}}}'
-        
-#         # We need to modify the content string, so we'll handle this differently
-#         # For now, return a placeholder and we'll process sequentially
-#         return latex_env
-    
-#     # Since we can't easily modify the string during iteration with re.sub,
-#     # we'll process environments sequentially
-#     environments = [
-#         ('theorem', r'#theorem\b'),
-#         ('proposition', r'#proposition\b'),
-#         ('lemma', r'#lemma\b'),
-#         ('corollary', r'#corollary\b'),
-#         ('proof', r'#proof\b'),
-#         ('definition', r'#definition\b'),
-#         ('example', r'#example\b'),
-#         ('remark', r'#remark\b')
-#     ]
-    
-#     # Process content sequentially to handle bracket balancing
-#     result = content
-#     for env_name, pattern in environments:
-#         pos = 0
-#         output_parts = []
-        
-#         for match in re.finditer(pattern, result):
-#             # Add text before the match
-#             output_parts.append(result[pos:match.start()])
-            
-#             # Process the environment
-#             env_start = match.start()
-#             bracket_pos = match.end()
-            
-#             # Skip whitespace
-#             while bracket_pos < len(result) and result[bracket_pos].isspace():
-#                 bracket_pos += 1
-                
-#             if bracket_pos < len(result) and result[bracket_pos] == '[':
-#                 # Extract balanced bracket content
-#                 bracket_result = find_balanced_brackets(result, bracket_pos)
-#                 if bracket_result:
-#                     env_content, end_pos = bracket_result
-#                     latex_env = f'\\begin{{{env_name}}}\n{env_content}\n\\end{{{env_name}}}'
-#                     output_parts.append(latex_env)
-#                     pos = end_pos
-#                     continue
-            
-#             # If we get here, couldn't parse properly, keep original
-#             output_parts.append(result[match.start():match.end()])
-#             pos = match.end()
-        
-#         # Add remaining text
-#         output_parts.append(result[pos:])
-#         result = ''.join(output_parts)
-    
-#     return result
-
 def convert_theorem_environments(content: str) -> str:
     """
     Convert Typst theorem-like environments to LaTeX with bracket balancing
@@ -429,6 +374,9 @@ def convert_typst_to_latex_content(typst_content: str, citation_keys: set) -> st
     # First remove commands we want to ignore
     
     content = remove_typst_commands(typst_content)
+
+    # Convert math blocks using pandoc
+    content = convert_math_with_pandoc(content)
 
     content = process_tex_comments(content)
     

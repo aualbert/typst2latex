@@ -368,40 +368,79 @@ def convert_citations_with_check(content: str, citation_keys: set) -> str:
 
 def convert_text_formatting(content: str) -> str:
     """
-    Convert Typst bold and italic text to LaTeX, but not inside math environments
+    Convert Typst bold and italic text to LaTeX, but not inside $...$ math or /* */ comments
     """
-    # Split content by math environments and dollars
-    parts = []
-    last_pos = 0
+    result = []
+    in_math = False
+    in_comment = False
+    i = 0
+    n = len(content)
     
-    # Find all math environments and dollar signs
-    math_pattern = r'\\\[|\\\]|\\begin\{equation\*?\}|\\end\{equation\*?\}|\\begin\{align\*?\}|\\end\{align\*?\}|\\begin\{gather\*?\}|\\end\{gather\*?\}|\\$'
+    while i < n:
+        # Check for comment start /*
+        if not in_math and not in_comment and i + 1 < n and content[i:i+2] == '/*':
+            result.append('/*')
+            in_comment = True
+            i += 2
+        # Check for comment end */
+        elif in_comment and i + 1 < n and content[i:i+2] == '*/':
+            result.append('*/')
+            in_comment = False
+            i += 2
+        # Check for math mode
+        elif content[i] == '$' and (i == 0 or content[i-1] != '\\'):
+            result.append('$')
+            in_math = not in_math
+            i += 1
+        elif not in_math and not in_comment:
+            # We're in text mode (not math, not comment), look for formatting patterns
+            
+            # Check for bold: *...* or [_*...*_]
+            if (i + 1 < n and content[i] == '*' and content[i+1] != '*') or \
+               (i + 4 < n and content[i:i+3] == '[_*'):
+                # Handle bold patterns
+                if content[i:i+3] == '[_*':
+                    # [_*bold*_]
+                    end_match = re.match(r'\[_\*([^*]+)\*_\]', content[i:])
+                    if end_match:
+                        result.append(r'\textbf{' + end_match.group(1) + '}')
+                        i += end_match.end()
+                        continue
+                else:
+                    # *bold*
+                    end_match = re.match(r'\*([^*]+)\*', content[i:])
+                    if end_match:
+                        result.append(r'\textbf{' + end_match.group(1) + '}')
+                        i += end_match.end()
+                        continue
+            
+            # Check for italic: _..._ or [_..._]
+            elif (i + 1 < n and content[i] == '_' and content[i+1] != '_') or \
+                 (i + 3 < n and content[i:i+2] == '[_'):
+                if content[i:i+2] == '[_':
+                    # [_italic_]
+                    end_match = re.match(r'\[_([^_]+)_\]', content[i:])
+                    if end_match:
+                        result.append(r'\emph{' + end_match.group(1) + '}')
+                        i += end_match.end()
+                        continue
+                else:
+                    # _italic_
+                    end_match = re.match(r'_([^_]+)_', content[i:])
+                    if end_match:
+                        result.append(r'\emph{' + end_match.group(1) + '}')
+                        i += end_match.end()
+                        continue
+            
+            # No formatting pattern found, just add the character
+            result.append(content[i])
+            i += 1
+        else:
+            # We're in math mode or comment, just copy characters
+            result.append(content[i])
+            i += 1
     
-    for match in re.finditer(math_pattern, content):
-        # Add non-math text before this match
-        non_math_text = content[last_pos:match.start()]
-        if non_math_text:
-            # Convert formatting in non-math text
-            non_math_text = re.sub(r'\[_\*([^*]+)\*_\]', r'\\textbf{\1}', non_math_text)
-            non_math_text = re.sub(r'\*([^*]+)\*', r'\\textbf{\1}', non_math_text)
-            non_math_text = re.sub(r'\[_([^_]+)_\]', r'\\emph{\1}', non_math_text)
-            non_math_text = re.sub(r'_([^_]+)_', r'\\emph{\1}', non_math_text)
-            parts.append(non_math_text)
-        
-        # Add the math content as-is (no formatting conversion)
-        parts.append(match.group(0))
-        last_pos = match.end()
-    
-    # Add remaining non-math text
-    remaining_text = content[last_pos:]
-    if remaining_text:
-        remaining_text = re.sub(r'\[_\*([^*]+)\*_\]', r'\\textbf{\1}', remaining_text)
-        remaining_text = re.sub(r'\*([^*]+)\*', r'\\textbf{\1}', remaining_text)
-        remaining_text = re.sub(r'\[_([^_]+)_\]', r'\\emph{\1}', remaining_text)
-        remaining_text = re.sub(r'_([^_]+)_', r'\\emph{\1}', remaining_text)
-        parts.append(remaining_text)
-    
-    return ''.join(parts)
+    return ''.join(result)
 
 def convert_typst_to_latex_content(typst_content: str, citation_keys: set) -> str:
     """
@@ -410,6 +449,9 @@ def convert_typst_to_latex_content(typst_content: str, citation_keys: set) -> st
     # First remove commands we want to ignore
     
     content = remove_typst_commands(typst_content)
+
+    # Convert text styling (but not inside math)
+    content = convert_text_formatting(content)
 
     # Convert math blocks using pandoc
     content = convert_math_with_pandoc(content)
@@ -429,19 +471,7 @@ def convert_typst_to_latex_content(typst_content: str, citation_keys: set) -> st
     content = re.sub(r'== (.*)$', r'\\subsection{\1}', content, flags=re.MULTILINE)
     content = re.sub(r'=== (.*)$', r'\\subsubsection{\1}', content, flags=re.MULTILINE)
 
-    # # Convert bold text
-    # content = re.sub(r'\[_\*([^*]+)\*_\]', r'\\textbf{\1}', content)
-    # content = re.sub(r'\*([^*]+)\*', r'\\textbf{\1}', content)
-    
-    # # Convert italic text
-    # content = re.sub(r'\[_([^_]+)_\]', r'\\emph{\1}', content)
-    # content = re.sub(r'_([^_]+)_', r'\\emph{\1}', content)
-
-    # Convert text styling (but not inside math)
-    #content = convert_text_formatting(content)
-
     # Convert citations
-    #content = re.sub(r'@([\w-]+)', r'\\citeref{\1}', content)
     content = convert_citations_with_check(content, citation_keys)
     
     # Convert references (simplified)

@@ -23,7 +23,6 @@ def convert_math_with_pandoc(content: str) -> str:
     
     def convert_math_block(match):
         math_content = match.group(0)
-        
         try:
             # Create a temporary file with the math content
             with tempfile.NamedTemporaryFile(mode='w', suffix='.typ', delete=False) as f:
@@ -367,6 +366,43 @@ def convert_citations_with_check(content: str, citation_keys: set) -> str:
     content = re.sub(r'@([\w-]+)', replace_citation, content)
     return content
 
+def convert_text_formatting(content: str) -> str:
+    """
+    Convert Typst bold and italic text to LaTeX, but not inside math environments
+    """
+    # Split content by math environments and dollars
+    parts = []
+    last_pos = 0
+    
+    # Find all math environments and dollar signs
+    math_pattern = r'\\\[|\\\]|\\begin\{equation\*?\}|\\end\{equation\*?\}|\\begin\{align\*?\}|\\end\{align\*?\}|\\begin\{gather\*?\}|\\end\{gather\*?\}|\\$'
+    
+    for match in re.finditer(math_pattern, content):
+        # Add non-math text before this match
+        non_math_text = content[last_pos:match.start()]
+        if non_math_text:
+            # Convert formatting in non-math text
+            non_math_text = re.sub(r'\[_\*([^*]+)\*_\]', r'\\textbf{\1}', non_math_text)
+            non_math_text = re.sub(r'\*([^*]+)\*', r'\\textbf{\1}', non_math_text)
+            non_math_text = re.sub(r'\[_([^_]+)_\]', r'\\emph{\1}', non_math_text)
+            non_math_text = re.sub(r'_([^_]+)_', r'\\emph{\1}', non_math_text)
+            parts.append(non_math_text)
+        
+        # Add the math content as-is (no formatting conversion)
+        parts.append(match.group(0))
+        last_pos = match.end()
+    
+    # Add remaining non-math text
+    remaining_text = content[last_pos:]
+    if remaining_text:
+        remaining_text = re.sub(r'\[_\*([^*]+)\*_\]', r'\\textbf{\1}', remaining_text)
+        remaining_text = re.sub(r'\*([^*]+)\*', r'\\textbf{\1}', remaining_text)
+        remaining_text = re.sub(r'\[_([^_]+)_\]', r'\\emph{\1}', remaining_text)
+        remaining_text = re.sub(r'_([^_]+)_', r'\\emph{\1}', remaining_text)
+        parts.append(remaining_text)
+    
+    return ''.join(parts)
+
 def convert_typst_to_latex_content(typst_content: str, citation_keys: set) -> str:
     """
     Convert Typst content to LaTeX content, handling sections, citations, etc.
@@ -379,7 +415,7 @@ def convert_typst_to_latex_content(typst_content: str, citation_keys: set) -> st
     content = convert_math_with_pandoc(content)
 
     content = process_tex_comments(content)
-    
+        
     # Convert theorem environments
     content = convert_theorem_environments(content)
 
@@ -392,14 +428,17 @@ def convert_typst_to_latex_content(typst_content: str, citation_keys: set) -> st
     content = re.sub(r'^= (.*)$', r'\\section{\1}', content, flags=re.MULTILINE)
     content = re.sub(r'== (.*)$', r'\\subsection{\1}', content, flags=re.MULTILINE)
     content = re.sub(r'=== (.*)$', r'\\subsubsection{\1}', content, flags=re.MULTILINE)
+
+    # # Convert bold text
+    # content = re.sub(r'\[_\*([^*]+)\*_\]', r'\\textbf{\1}', content)
+    # content = re.sub(r'\*([^*]+)\*', r'\\textbf{\1}', content)
     
-    # Convert bold text
-    content = re.sub(r'\[_\*([^*]+)\*_\]', r'\\textbf{\1}', content)
-    content = re.sub(r'\*([^*]+)\*', r'\\textbf{\1}', content)
-    
-    # Convert italic text
-    content = re.sub(r'\[_([^_]+)_\]', r'\\emph{\1}', content)
-    content = re.sub(r'_([^_]+)_', r'\\emph{\1}', content)
+    # # Convert italic text
+    # content = re.sub(r'\[_([^_]+)_\]', r'\\emph{\1}', content)
+    # content = re.sub(r'_([^_]+)_', r'\\emph{\1}', content)
+
+    # Convert text styling (but not inside math)
+    #content = convert_text_formatting(content)
 
     # Convert citations
     #content = re.sub(r'@([\w-]+)', r'\\citeref{\1}', content)

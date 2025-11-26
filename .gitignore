@@ -1,7 +1,7 @@
 *.bib
 *.typ
 *.tex
-*.bcf
+*.bcf*
 *.pdf
 *.acn
 *.acr

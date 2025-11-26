@@ -659,7 +659,7 @@ def create_latex_content(data: Dict[str, str]) -> str:
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
-\usepackage{amsthm}
+\usepackage[thref]{ntheorem}
 \usepackage{graphicx}
 \usepackage{xcolor}
 \usepackage[margin=1.5cm, top=3cm, bottom=2cm]{geometry}

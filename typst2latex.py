@@ -56,7 +56,7 @@ def convert_math_with_pandoc(content: str) -> str:
         convert_math_block,
         content,
         flags=re.DOTALL
-    )
+    )    
     
     return content
 
@@ -68,53 +68,153 @@ def remove_trailing_newline(s: str) -> str:
         return s[:-1]
     return s
 
+
+def find_balanced_parens(text, start_pos):
+    """
+    Find the position of the closing parenthesis that balances the opening at start_pos
+    Returns (content, end_pos) or None if unbalanced
+    """
+    if start_pos >= len(text) or text[start_pos] != '(':
+        return None
+            
+    paren_count = 1
+    pos = start_pos + 1
+    content_start = pos
+        
+    while pos < len(text) and paren_count > 0:
+        if text[pos] == '(':
+            paren_count += 1
+        elif text[pos] == ')':
+            paren_count -= 1
+        pos += 1
+            
+    if paren_count == 0:
+        content = text[content_start:pos-1]  # -1 to exclude the closing )
+        return content, pos
+    else:
+        return None
+    
+def find_balanced_brackets(text, start_pos):
+    """
+    Find the position of the closing bracket that balances the opening at start_pos
+    Returns (content, end_pos) or None if unbalanced
+    """
+    if start_pos >= len(text) or text[start_pos] != '[':
+        return None
+            
+    bracket_count = 1
+    pos = start_pos + 1
+    content_start = pos
+        
+    while pos < len(text) and bracket_count > 0:
+        if text[pos] == '[':
+            bracket_count += 1
+        elif text[pos] == ']':
+            bracket_count -= 1
+        pos += 1
+            
+    if bracket_count == 0:
+        content = text[content_start:pos-1]  # -1 to exclude the closing ]
+        return content, pos
+    else:
+        return None
+
 def convert_figures(content: str) -> str:
     """
     Convert Typst figure environments to LaTeX figure environments
+    with proper balancing of parentheses and brackets
     """
     
-    def replace_figure(match):
-        figure_content = match.group(1).strip()
-        caption_content = match.group(2).strip() if match.group(2) else ""
+    def parse_figure_content(figure_args):
+        """
+        Parse figure arguments to extract content and caption
+        """
+        content_parts = []
+        caption_content = ""
         
-        # Process the content (remove brackets, handle nested content)
-        figure_content = re.sub(r'^\s*\[\s*|\s*\]\s*$', '', figure_content)
+        i = 0
+        while i < len(figure_args):
+            # Look for caption:
+            if figure_args.startswith('caption:', i):
+                i += 8  # Skip 'caption:'
+                # Skip whitespace
+                while i < len(figure_args) and figure_args[i].isspace():
+                    i += 1
+                
+                # Parse caption content (could be text[...] or other)
+                if figure_args.startswith('text[', i):
+                    caption_result = find_balanced_brackets(figure_args, i + 4)  # i+4 to skip 'text'
+                    if caption_result:
+                        caption_content, i = caption_result
+                else:
+                    # Try to find any content after caption:
+                    # This is a simplified approach - might need refinement
+                    caption_end = figure_args.find(',', i)
+                    if caption_end == -1:
+                        caption_end = len(figure_args)
+                    caption_content = figure_args[i:caption_end].strip()
+                    i = caption_end
+            else:
+                # Add non-caption content to figure content
+                content_parts.append(figure_args[i])
+                i += 1
         
-        # Build LaTeX figure environment
-        latex_figure = []
-        latex_figure.append(r'\begin{figure}[htbp]')
-        latex_figure.append(r'\centering')
-        
-        # Add figure content (this could be images, tikz, etc.)
-        if figure_content:
-            # For now, just pass through the content - could add image conversion later
-            latex_figure.append(figure_content)
-        
-        # Add caption if provided
-        if caption_content:
-            latex_figure.append(f'\\caption{{{caption_content}}}')
-        
-        latex_figure.append(r'\end{figure}')
-        
-        return '\n'.join(latex_figure)
+        figure_content = ''.join(content_parts).strip()
+        # Remove trailing comma if present
+        if figure_content.endswith(','):
+            figure_content = figure_content[:-1]
+            
+        return figure_content, caption_content
     
-    # Pattern for figure with caption
-    content = re.sub(
-        r'#figure\s*\(\s*\[\s*(.*?)\s*\]\s*caption:\s*(.*?)\s*\)',
-        replace_figure,
-        content,
-        flags=re.DOTALL
-    )
+    result = []
+    i = 0
+    n = len(content)
     
-    # Pattern for figure without caption
-    content = re.sub(
-        r'#figure\s*\(\s*\[\s*(.*?)\s*\]\s*\)',
-        lambda m: f'\\begin{{figure}}[htbp]\n\\centering\n{m.group(1).strip()}\n\\end{{figure}}',
-        content,
-        flags=re.DOTALL
-    )
+    while i < n:
+        # Look for #figure(
+        if content.startswith('#figure(', i):
+            figure_start = i
+            i += 8  # Skip '#figure('
+            
+            # Find balanced parentheses for figure arguments
+            paren_result = find_balanced_parens(content, figure_start + 7)  # +7 to get to '('
+            if paren_result:
+                figure_args, end_pos = paren_result
+                
+                # Parse figure arguments to extract content and caption
+                figure_content, caption_content = parse_figure_content(figure_args)
+                
+                # Build LaTeX figure
+                latex_figure = []
+                latex_figure.append(r'\begin{figure}[htbp]')
+                latex_figure.append(r'\centering')
+                
+                # Add figure content
+                if figure_content:
+                    # For now, pass through the content - could add grid/image conversion later
+                    latex_figure.append(figure_content)
+                
+                # Add caption if provided
+                if caption_content:
+                    # Convert any @citations to \cite
+                    caption_content = re.sub(r'@([\w-]+)', r'\\cite{\1}', caption_content)
+                    latex_figure.append(f'\\caption{{{caption_content}}}')
+                
+                latex_figure.append(r'\end{figure}')
+                
+                result.append('\n'.join(latex_figure))
+                i = end_pos
+                continue
+            else:
+                # Unbalanced parentheses, keep original
+                result.append(content[figure_start:i])
+        
+        # No figure found, add character
+        if i < n:
+            result.append(content[i])
+            i += 1
     
-    return content
+    return ''.join(result)
 
 def remove_typst_commands(content: str) -> str:
     """

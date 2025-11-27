@@ -1,11 +1,27 @@
+use anyhow::{Context, Result};
 use clap::{Arg, Command};
 use pest::Parser;
-use std::fs;
-use anyhow::{Result, Context};
+use pest_derive::Parser;
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
 pub struct TypstParser;
+
+fn typ2tex(path: &Path) -> PathBuf {
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("output");
+
+    match path.parent() {
+        Some(parent) => parent.join(format!("{}.tex", stem)),
+        None => format!("{}.tex", stem).into(),
+    }
+}
 
 fn main() -> Result<()> {
     let matches = Command::new("Typst Parser")
@@ -13,148 +29,53 @@ fn main() -> Result<()> {
         .author("Your Name")
         .about("Parses Typst files using a custom Pest grammar")
         .arg(
-            Arg::new("file")
-                .help("The input file to parse")
-                .required(true)
-                .index(1),
+            Arg::new("input")
+                .help("The input typst file to parse")
+                .required(true),
+        )
+        .arg(
+            Arg::new("bib")
+                .short('b')
+                .long("bib")
+                .help("A bib file for distinguishing citations and references"),
+        )
+        .arg(
+            Arg::new("output")
+                .short('o')
+                .long("output")
+                .help("The output latex file to generate"),
         )
         .arg(
             Arg::new("verbose")
                 .short('v')
                 .long("verbose")
-                .help("Enable verbose output with parse tree")
-                .action(clap::ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("stats")
-                .short('s')
-                .long("stats")
-                .help("Show parsing statistics")
+                .help("Enable verbose output")
                 .action(clap::ArgAction::SetTrue),
         )
         .get_matches();
 
-    let filename = matches.get_one::<String>("file").unwrap();
+    let typst_path = Path::new(matches.get_one::<String>("input").unwrap());
+    let bib_path = matches.get_one::<String>("bib").map(Path::new);
+    let latex_path = match matches.get_one::<&str>("output") {
+        Some(filename) => PathBuf::from(filename),
+        None => typ2tex(typst_path),
+    };
     let verbose = matches.get_flag("verbose");
-    let stats = matches.get_flag("stats");
 
     // Read the file
-    let input = fs::read_to_string(filename)
-        .with_context(|| format!("Failed to read file: {}", filename))?;
+    let content = fs::read_to_string(typst_path)
+        .with_context(|| format!("Failed to read file: {:?}", typst_path))?;
 
-    println!("Parsing file: {}", filename);
-    
-    if verbose {
-        println!("File content (first 500 chars):");
-        println!("{}", if input.len() > 500 { &input[..500] } else { &input });
-        println!("{}", "=".repeat(50));
-    }
+    let pairs = TypstParser::parse(Rule::program, &content)
+        .with_context(|| "Failed to parse input according to grammar")?;
 
-    // Parse the input
-    let start_time = std::time::Instant::now();
-    match parse_input(&input, verbose) {
-        Ok(pairs) => {
-            let duration = start_time.elapsed();
-            println!("✅ Parsing successful!");
-            
-            if stats {
-                println!("📊 Statistics:");
-                println!("  - Parse time: {:?}", duration);
-                println!("  - File size: {} bytes", input.len());
-                println!("  - Characters: {}", input.chars().count());
-                println!("  - Lines: {}", input.lines().count());
-                
-                // Count different statement types
-                let mut stmt_counts = std::collections::HashMap::new();
-                count_statements(&pairs, &mut stmt_counts);
-                
-                println!("  - Statements found:");
-                for (stmt_type, count) in stmt_counts {
-                    println!("    - {}: {}", stmt_type, count);
-                }
-            }
-        }
-        Err(e) => {
-            eprintln!("❌ Parsing failed: {}", e);
-            std::process::exit(1);
-        }
+    // Temp printing
+    for pair in pairs {
+        // A pair is a combination of the rule which matched and a span of input
+        println!("Rule:    {:?}", pair.as_rule());
+        println!("Span:    {:?}", pair.as_span());
+        println!("Text:    {}", pair.as_str());
     }
 
     Ok(())
-}
-
-fn parse_input(input: &str, verbose: bool) -> Result<Vec<pest::iterators::Pair<Rule>>> {
-    let pairs = TypstParser::parse(Rule::program, input)
-        .with_context(|| "Failed to parse input according to grammar")?;
-
-    let pairs_vec: Vec<_> = pairs.collect();
-
-    if verbose {
-        println!("Parse tree:");
-        print_parse_tree(&pairs_vec, 0);
-    }
-
-    Ok(pairs_vec)
-}
-
-fn print_parse_tree(pairs: &[pest::iterators::Pair<Rule>], depth: usize) {
-    for pair in pairs {
-        let indent = "  ".repeat(depth);
-        let rule = pair.as_rule();
-        let span = pair.as_span();
-        let text = pair.as_str();
-        
-        println!("{}{:?} [{:?}]", indent, rule, span);
-        
-        if text.len() < 100 {
-            println!("{}  Text: '{}'", indent, text.replace('\n', "\\n"));
-        } else {
-            println!("{}  Text: '{}...'", indent, &text[..50].replace('\n', "\\n"));
-        }
-        
-        let inner_pairs: Vec<_> = pair.into_inner().collect();
-        if !inner_pairs.is_empty() {
-            print_parse_tree(&inner_pairs, depth + 1);
-        }
-        
-        println!("{}---", indent);
-    }
-}
-
-fn count_statements(pairs: &[pest::iterators::Pair<Rule>], counts: &mut std::collections::HashMap<String, usize>) {
-    for pair in pairs {
-        let rule = pair.as_rule();
-        
-        match rule {
-            Rule::section | Rule::subsection | Rule::subsubsection => {
-                *counts.entry("Sections".to_string()).or_insert(0) += 1;
-            }
-            Rule::theorem | Rule::proof => {
-                *counts.entry("Theorems/Proofs".to_string()).or_insert(0) += 1;
-            }
-            Rule::figure => {
-                *counts.entry("Figures".to_string()).or_insert(0) += 1;
-            }
-            Rule::header => {
-                *counts.entry("Headers".to_string()).or_insert(0) += 1;
-            }
-            Rule::command => {
-                *counts.entry("Commands".to_string()).or_insert(0) += 1;
-            }
-            Rule::comment => {
-                *counts.entry("Comments".to_string()).or_insert(0) += 1;
-            }
-            Rule::citation => {
-                *counts.entry("Citations".to_string()).or_insert(0) += 1;
-            }
-            Rule::math => {
-                *counts.entry("Math blocks".to_string()).or_insert(0) += 1;
-            }
-            _ => {}
-        }
-        
-        // Recursively count inner pairs
-        let inner_pairs: Vec<_> = pair.into_inner().collect();
-        count_statements(&inner_pairs, counts);
-    }
 }

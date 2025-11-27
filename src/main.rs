@@ -126,6 +126,7 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
             Rule::subsection => content += &format!("\\subsection{{{}}}\n", gis!(pair)),
             Rule::subsubsection => content += &format!("\\subsubsection{{{}}}\n", gis!(pair)),
             Rule::line => content += &gs!(pair),
+            Rule::proof => content += &format!("\\begin{{proof}}{}\\end{{proof}}", gis!(pair)),
             _ => {}
         }
     }

@@ -1,6 +1,8 @@
 use anyhow::{Context, Result};
 use std::process::Command;
 
+// TODO pandoc WILL remove whitespaces and newlines after and before, we have to preserves them
+//
 /// Converts Typst content to Latex using pandoc
 /// Removes trailing newline added by pandoc
 pub fn typst2latex(content: &str) -> Result<String> {

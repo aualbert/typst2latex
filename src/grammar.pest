@@ -57,12 +57,12 @@ quote_line = { "\"" ~ (citation | raw_text | paren_line | brack_line | quote_lin
 
 grid = { "#grid(" ~ text ~ ")" }
 
-math = { "$" ~ (!"$" ~ ANY)* ~ "$" }
+math = @{ "$" ~ (!"$" ~ ANY)* ~ "$" ~ WHITESPACE? }
 
 comment = { ("/* BEGIN TEX"~"\n" ~ latex_content ~ "END TEX */") | ("// BEGIN NO TEX"~"\n" ~ (!"// END NO TEX" ~ ANY)* ~ "// END NO TEX") | ("//" ~ all_char*) | ("/*" ~ (!"*/" ~ ANY) * ~ "*/") }
 latex_content = { (!"END TEX */" ~ ANY)* }
 
-citation = @{ "@" ~ ASCII_ALPHANUMERIC+ }
+citation = @{ "@" ~ ASCII_ALPHANUMERIC+ ~ WHITESPACE? }
 
 raw_text = @{ (char | " ")+ } 
 

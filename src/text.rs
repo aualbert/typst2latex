@@ -12,13 +12,23 @@ fn unique_id(count: usize) -> String {
     format!("citation{}citation", count)
 }
 
+// TODO debug too much braces
 fn key_to_str(key: &str, citations: &HashSet<String>) -> String {
-    // Remove the @ symbol if present
     let clean_key = key.trim_start_matches('@');
-    if citations.contains(clean_key) {
-        format!("\\cite{{{}}}", clean_key)
+
+    // Check for trailing space
+    let has_trailing_space = key.ends_with(' ');
+
+    let citation = if citations.contains(clean_key) {
+        format!("\\cite{{{}}}", clean_key.trim())
     } else {
-        format!("\\ref{{{}}}", clean_key)
+        format!("\\ref{{{}}}", clean_key.trim())
+    };
+
+    if has_trailing_space {
+        format!("{} ", citation)
+    } else {
+        citation
     }
 }
 

@@ -94,6 +94,10 @@ fn process_text(pair: Pair<Rule>) -> Vec<Text> {
 fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
     let mut content = String::new();
 
+    fn get_str(pair: Pair<Rule>, citations: &HashSet<String>) -> Result<String> {
+        to_latex(process_text(pair), citations)
+    }
+
     fn get_inner_str(pair: Pair<Rule>, citations: &HashSet<String>) -> Result<String> {
         let vec = pair
             .into_inner()
@@ -101,6 +105,12 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
             .map(process_text)
             .unwrap_or_default();
         to_latex(vec, citations)
+    }
+
+    macro_rules! gs {
+        ($pair:expr) => {
+            get_str($pair, &citations)?
+        };
     }
 
     macro_rules! gis {
@@ -115,6 +125,7 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
             Rule::section => content += &format!("\\section{{{}}}\n", gis!(pair)),
             Rule::subsection => content += &format!("\\subsection{{{}}}\n", gis!(pair)),
             Rule::subsubsection => content += &format!("\\subsubsection{{{}}}\n", gis!(pair)),
+            Rule::line => content += &gs!(pair),
             _ => {}
         }
     }

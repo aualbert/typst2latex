@@ -1,11 +1,22 @@
+mod bib_parser;
+mod document;
+
 use anyhow::{Context, Result};
+use bib_parser::parse_bib;
 use clap::{Arg, Command};
-use pest::Parser;
+use document::Document;
+use pest::{
+    Parser,
+    iterators::{Pair, Pairs},
+};
 use pest_derive::Parser;
 use std::{
+    collections::HashSet,
     fs,
     path::{Path, PathBuf},
 };
+
+const DEFAULT_TEMPLATE: &str = include_str!("template.tex");
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -21,6 +32,21 @@ fn typ2tex(path: &Path) -> PathBuf {
         Some(parent) => parent.join(format!("{}.tex", stem)),
         None => format!("{}.tex", stem).into(),
     }
+}
+
+fn print_pairs(pairs: Pairs<Rule>) -> () {
+    fn print_depth(pairs: Pairs<Rule>, depth: usize) -> () {
+        for pair in pairs {
+            let indent = "   ".repeat(depth);
+            println!("{indent}{:?}", pair.as_rule());
+            print_depth(pair.into_inner(), depth + 1);
+        }
+    }
+    print_depth(pairs, 0)
+}
+
+fn explore(pairs: Pairs<Rule>) -> Document {
+    Document::default()
 }
 
 fn main() -> Result<()> {
@@ -46,6 +72,12 @@ fn main() -> Result<()> {
                 .help("The output latex file to generate"),
         )
         .arg(
+            Arg::new("template")
+                .short('t')
+                .long("template")
+                .help("The latex template to use"),
+        )
+        .arg(
             Arg::new("verbose")
                 .short('v')
                 .long("verbose")
@@ -54,28 +86,43 @@ fn main() -> Result<()> {
         )
         .get_matches();
 
-    let typst_path = Path::new(matches.get_one::<String>("input").unwrap());
-    let bib_path = matches.get_one::<String>("bib").map(Path::new);
-    let latex_path = match matches.get_one::<&str>("output") {
-        Some(filename) => PathBuf::from(filename),
-        None => typ2tex(typst_path),
-    };
     let verbose = matches.get_flag("verbose");
+    let typst_path = Path::new(matches.get_one::<String>("input").unwrap());
+    let template_path = matches.get_one::<String>("template").map(Path::new);
+    let bib_path = matches.get_one::<String>("bib").map(Path::new);
+    let latex_path = matches
+        .get_one::<&str>("output")
+        .map_or(typ2tex(typst_path), PathBuf::from);
 
-    // Read the file
+    // Read the typst file
     let content = fs::read_to_string(typst_path)
         .with_context(|| format!("Failed to read file: {:?}", typst_path))?;
 
     let pairs = TypstParser::parse(Rule::program, &content)
         .with_context(|| "Failed to parse input according to grammar")?;
 
-    // Temp printing
-    for pair in pairs {
-        // A pair is a combination of the rule which matched and a span of input
-        println!("Rule:    {:?}", pair.as_rule());
-        println!("Span:    {:?}", pair.as_span());
-        println!("Text:    {}", pair.as_str());
-    }
+    // Read the latex template
+    let template = match template_path {
+        Some(path) => fs::read_to_string(path)
+            .with_context(|| format!("Failed to read file: {:?}", typst_path))?,
+        None => DEFAULT_TEMPLATE.into(),
+    };
+
+    // Read the bib file
+    let citations = match bib_path {
+        Some(path) => parse_bib(
+            &fs::read_to_string(path)
+                .with_context(|| format!("Failed to read file: {:?}", typst_path))?,
+        ),
+        None => HashSet::<String>::new(),
+    };
+
+    explore(pairs);
+
+    // TODO change for content
+    // Write the latex file
+    fs::write(&latex_path, &content)
+        .with_context(|| format!("Failed to write file: {:?}", latex_path))?;
 
     Ok(())
 }

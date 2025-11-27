@@ -12,7 +12,6 @@ fn unique_id(count: usize) -> String {
     format!("citation{}citation", count)
 }
 
-// TODO debug too much braces
 fn key_to_str(key: &str, citations: &HashSet<String>) -> String {
     let clean_key = key.trim_start_matches('@');
 

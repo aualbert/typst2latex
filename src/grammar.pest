@@ -10,17 +10,18 @@ env = _{ theorem | proof | figure }
 
 proof = { "#proof[" ~ text ~ "]" }
 
-theorem = { "#" ~ th_type ~ "[" ~ (th_title ~ "\n" ~ th_content | th_content) ~ "]" ~ label? }
+theorem = { "#" ~ th_type ~ "[" ~ (th_title ~ "\n" ~ th_content | th_content) ~ "]" ~ labell? }
 th_type = { "theorem" | "lemma" | "corollary" | "proposition" | "definition" | "example" | "property" }
 th_title = { line }
 th_content = { text }
 
-figure = {  "#figure(" ~ ( fig_content | fig_caption | "\n" )+ ~ ")" } 
+figure = {  "#figure(" ~ ( fig_content | fig_caption | "\n" )+ ~ ")" ~ labell? } 
 fig_content = { "[" ~ text ~ "]" ~ ","? }
 fig_caption = _{ "caption" ~ ":" ~ "[" ~ caption ~ "]" ~ ","? }
 caption = { text }
 
-label = { "<" ~ ASCII_ALPHANUMERIC+ ~ ">" }
+labell = _{ "<" ~ label ~ ">" }
+label = { ASCII_ALPHANUMERIC+ }
 
 // Specific format for header
 header = {"#show" ~ ":" ~ "ams-article.with(" ~ ( hd_title | hd_abstract | hd_bib | hd_authors | "\n" )+ ~ ")" }

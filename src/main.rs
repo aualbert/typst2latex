@@ -127,6 +127,56 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
             Rule::subsubsection => content += &format!("\\subsubsection{{{}}}\n", gis!(pair)),
             Rule::line => content += &gs!(pair),
             Rule::proof => content += &format!("\\begin{{proof}}{}\\end{{proof}}", gis!(pair)),
+            Rule::figure => {
+                let mut fcontent = String::new();
+                let mut caption = String::new();
+                let mut label = String::new();
+                for p in pair.into_inner() {
+                    match p.as_rule() {
+                        Rule::fig_content => {
+                            fcontent = gis!(p);
+                        }
+                        Rule::caption => {
+                            caption = gis!(p);
+                        }
+                        Rule::label => {
+                            label = format!("\\label{{{}}}", p.as_str());
+                        }
+                        _ => {}
+                    }
+                }
+                content += &format!(
+                    "\\begin{{figure}}\n{fcontent}\n\\caption{{{caption}}}\n{label}\\end{{figure}}"
+                )
+            }
+            Rule::theorem => {
+                let mut ttype = String::new();
+                let mut title = String::new();
+                let mut tcontent = String::new();
+                let mut label = String::new();
+                for p in pair.into_inner() {
+                    match p.as_rule() {
+                        Rule::th_type => {
+                            ttype = p.as_str().to_string();
+                        }
+                        Rule::th_title => {
+                            title = gis!(p);
+                        }
+                        Rule::th_content => {
+                            tcontent = gis!(p);
+                        }
+                        Rule::label => {
+                            label = format!("\\label{{{}}}", p.as_str());
+                        }
+                        _ => {}
+                    }
+                }
+                // TODO fix label and title
+                content += &format!(
+                    "\\begin{{{}}}\n{}\\caption{{{}}}{}\\end{{{}}}\n",
+                    ttype, tcontent, title, label, ttype
+                );
+            }
             _ => {}
         }
     }

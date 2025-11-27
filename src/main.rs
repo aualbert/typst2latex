@@ -1,5 +1,7 @@
 mod bib_parser;
 mod document;
+mod pandoc;
+mod text;
 
 use anyhow::{Context, Result};
 use bib_parser::parse_bib;
@@ -15,6 +17,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
+use text::{Text, to_latex};
 
 const DEFAULT_TEMPLATE: &str = include_str!("template.tex");
 
@@ -34,19 +37,91 @@ fn typ2tex(path: &Path) -> PathBuf {
     }
 }
 
-// fn print_pairs(pairs: Pairs<Rule>) -> () {
-//     fn print_depth(pairs: Pairs<Rule>, depth: usize) -> () {
-//         for pair in pairs {
-//             let indent = "   ".repeat(depth);
-//             println!("{indent}{:?}", pair.as_rule());
-//             print_depth(pair.into_inner(), depth + 1);
-//         }
-//     }
-//     print_depth(pairs, 0)
-// }
+fn process_text(pair: Pair<Rule>) -> Vec<Text> {
+    fn process_inner(pair: Pair<Rule>, current: &mut String, result: &mut Vec<Text>) {
+        match pair.as_rule() {
+            Rule::newline => {
+                current.push('\n');
+            }
+            Rule::raw_text | Rule::math | Rule::grid => {
+                current.push_str(pair.as_str());
+            }
+            Rule::citation => {
+                if !current.is_empty() {
+                    result.push(Text::Raw(std::mem::take(current)));
+                }
+                result.push(Text::Citation(pair.as_str().into()));
+            }
+            Rule::paren_text | Rule::paren_line => {
+                current.push('(');
+                for inner_pair in pair.into_inner() {
+                    process_inner(inner_pair, current, result);
+                }
+                current.push(')');
+            }
+            Rule::brack_text | Rule::brack_line => {
+                current.push('[');
+                for inner_pair in pair.into_inner() {
+                    process_inner(inner_pair, current, result);
+                }
+                current.push(']');
+            }
+            Rule::quote_text | Rule::quote_line => {
+                current.push('\"');
+                for inner_pair in pair.into_inner() {
+                    process_inner(inner_pair, current, result);
+                }
+                current.push('\"');
+            }
+            _ => {
+                // For other rules, recursively process their inner pairs
+                for inner_pair in pair.into_inner() {
+                    process_inner(inner_pair, current, result);
+                }
+            }
+        }
+    }
 
-fn explore(pairs: Pairs<Rule>, citations: HashSet<String>, verbose: bool) -> Document {
-    Document::default()
+    let mut result = Vec::new();
+    let mut current = String::new();
+    process_inner(pair, &mut current, &mut result);
+    if !current.is_empty() {
+        result.push(Text::Raw(current))
+    }
+    result
+}
+
+fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
+    let mut content = String::new();
+
+    fn get_inner_str(pair: Pair<Rule>, citations: &HashSet<String>) -> Result<String> {
+        let vec = pair
+            .into_inner()
+            .next()
+            .map(process_text)
+            .unwrap_or_default();
+        to_latex(vec, citations)
+    }
+
+    macro_rules! gis {
+        ($pair:expr) => {
+            get_inner_str($pair, &citations)?
+        };
+    }
+
+    for pair in pairs {
+        match pair.as_rule() {
+            Rule::newline => content += "\n",
+            Rule::section => content += &format!("\\section{{{}}}\n", gis!(pair)),
+            Rule::subsection => content += &format!("\\subsection{{{}}}\n", gis!(pair)),
+            Rule::subsubsection => content += &format!("\\subsubsection{{{}}}\n", gis!(pair)),
+            _ => {}
+        }
+    }
+
+    let mut document = Document::default();
+    document.content = content;
+    Ok(document)
 }
 
 fn main() -> Result<()> {
@@ -77,16 +152,8 @@ fn main() -> Result<()> {
                 .long("template")
                 .help("The latex template to use"),
         )
-        .arg(
-            Arg::new("verbose")
-                .short('v')
-                .long("verbose")
-                .help("Enable verbose output")
-                .action(clap::ArgAction::SetTrue),
-        )
         .get_matches();
 
-    let verbose = matches.get_flag("verbose");
     let typst_path = Path::new(matches.get_one::<String>("input").unwrap());
     let template_path = matches.get_one::<String>("template").map(Path::new);
     let bib_path = matches.get_one::<String>("bib").map(Path::new);
@@ -117,7 +184,7 @@ fn main() -> Result<()> {
         None => HashSet::<String>::new(),
     };
 
-    let document = explore(pairs, citations, verbose);
+    let document = explore(pairs, citations)?;
 
     // Write the latex file
     fs::write(&latex_path, document.to_latex(template))

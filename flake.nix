@@ -20,6 +20,7 @@
           buildInputs = [
             pkg-config
             pandoc
+            rust-analyzer
             rust-bin.beta.latest.default
           ];
         };

@@ -1,0 +1,90 @@
+
+program = _{ SOI ~ stmt* ~ EOI }
+stmt = _{ comment | level | env | header | command | line | newline }
+
+level = _{ subsubsection | subsection | section }
+section = { "=" ~ line }
+subsection = { "==" ~ line }
+subsubsection = { "===" ~ line }
+
+env = _{ theorem | proof | figure }
+
+proof = { "#proof[" ~ text ~ "]" }
+
+theorem = { "#" ~ th_type ~ "[" ~ (th_title ~ "\n" ~ th_content | th_content) ~ "]" ~ label? }
+th_type = { "theorem" | "lemma" | "corollary" | "proposition" | "definition" | "example" | "property" }
+th_title = { line }
+th_content = { text }
+
+figure = {  "#figure(" ~ ( fig_content | fig_caption | "\n" )+ ~ ")" } 
+fig_content = { "[" ~ text ~ "]" ~ ","? }
+fig_caption = _{ "caption" ~ ":" ~ "[" ~ caption ~ "]" ~ ","? }
+caption = { text }
+
+label = { "<" ~ ASCII_ALPHANUMERIC+ ~ ">" }
+
+// Specific format for header
+header = {"#show" ~ ":" ~ "ams-article.with(" ~ ( hd_title | hd_abstract | hd_bib | hd_authors | "\n" )+ ~ ")" }
+hd_title = _{ "title" ~ ":" ~ "[" ~ my_title ~ "]" ~ ","? }
+my_title = { text | "" }
+hd_abstract = _{ "abstract" ~ ":" ~ "[" ~ my_abstract ~ "]" ~ ","? }
+my_abstract = { text | "" }
+hd_bib = _{ "bibliography" ~ ":" ~ "bibliography("~ my_bib ~ ")" ~ ","? }
+my_bib = { text | "" }
+hd_authors = _{ "authors" ~ ":" ~ "\n"* ~ "(" ~ "\n"* ~ "(" ~ ( hd_name | hd_org | hd_aff | hd_loc | "\n" )+ ~ ")" ~ ","? ~ "\n"* ~ ")" ~ ","? }
+hd_name = _{ "name" ~ ":" ~ "\"" ~ my_name ~ "\"" ~  ","? }
+my_name = { (char | "\n")+ }
+hd_org = _{ "organization" ~ ":" ~ "[" ~ my_org ~ "]" ~ ","? }
+my_org = { text | "" }
+hd_aff = _{ "affiliation" ~ ":" ~ "[" ~ my_aff ~ "]" ~ ","? }
+my_aff = { text | "" }
+hd_loc = _{ "location" ~ ":" ~ "[" ~ my_loc ~ "]" ~ ","? }
+my_loc = { text | "" }
+
+command = { long_cmd | short_cmd } 
+short_cmd = _{ "#" ~ cmd_type ~ line ~ "\n" } 
+long_cmd = _{ "#" ~ cmd_type ~ char+ ~ "(" ~ text ~ ")" }
+cmd_type = _{ "set" | "show" | "import" | "let" | "pagebreak" | "outline" }
+
+text = { (grid | citation | raw_text | paren_text | brack_text | quote_text | math | newline)+ }
+paren_text = { "(" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ ")" } 
+brack_text = { "[" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ "]" } 
+quote_text = { "\"" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ "\"" } 
+
+line = { (grid | citation | raw_text | paren_line | brack_line | quote_line | math)+ }
+paren_line = { "(" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ ")" }
+brack_line = { "[" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ "]" }
+quote_line = { "\"" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ "\"" }
+
+grid = { "#grid(" ~ text ~ ")" }
+
+math = { "$" ~ (!"$" ~ ANY)* ~ "$" }
+
+comment = { ("/* BEGIN TEX"~"\n" ~ latex_content ~ "END TEX */") | ("// BEGIN NO TEX"~"\n" ~ (!"// END NO TEX" ~ ANY)* ~ "// END NO TEX") | ("//" ~ all_char*) | ("/*" ~ (!"*/" ~ ANY) * ~ "*/") }
+latex_content = { (!"END TEX */" ~ ANY)* }
+
+citation = @{ "@" ~ ASCII_ALPHANUMERIC+ }
+
+raw_text = @{ (char | " ")+ } 
+
+all_char = _{ char | "(" | ")" | "@" | "\"" | "[" | "]" }
+char = _{ 
+    accent | ASCII_ALPHANUMERIC | 
+    "_" | "^" | "*" | "-" | "\\" | "{" | "}" | "|" | "+" | "=" |
+    "<" | ">" | "!" | ":" | ";"  | "," | "." | "/" | "?" | "'" |
+    "`" | "~" | "&" | "%" | "#" 
+}
+
+accent = _{ 
+    "ç" | "á" | "à" | "â" | "ä" | "ã" | "å" | "ā" | "ă" | "ǎ" | 
+    "é" | "è" | "ê" | "ë" | "ē" | "ĕ" | "ě" | "ė" | "ę" | "œ" | 
+    "í" | "ì" | "î" | "ï" | "ī" | "ĭ" | "ǐ" | "į" | "ı" | "ą" |
+    "ó" | "ò" | "ô" | "ö" | "õ" | "ō" | "ŏ" | "ǒ" | "ø" | "ǿ" | 
+    "ú" | "ù" | "û" | "ü" | "ū" | "ŭ" | "ǔ" | "ů" | "ű" | "æ" |
+    "ŷ" | "ć" | "ĉ" | "č" | "ċ" | "ñ" | "ń" | "ņ" | "ň" | "ŋ" | 
+    "š" | "ś" | "ŝ" | "ş" | "ß" | "ž" | "ż" | "ź" | "ð" | "þ" | 
+    "ý" | "ÿ" | "ỳ" 
+}
+
+newline = { "\n" }
+WHITESPACE = _{ "\t" | " " }

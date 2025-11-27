@@ -1,3 +1,5 @@
+// TODO use organization, affiliation and location
+
 #[derive(Debug, Clone, Default)]
 pub struct Document {
     pub title: Option<String>,
@@ -17,7 +19,7 @@ impl Document {
         let authors = self.authors.as_deref().unwrap_or("");
         let abstract_text = self.abstractt.as_deref().unwrap_or("");
         let bibliography = self.bibliography.as_deref().unwrap_or("");
-        let date = r"\today";
+        let date = self.date.as_deref().unwrap_or(r"\today");
         let content = &self.content;
 
         template

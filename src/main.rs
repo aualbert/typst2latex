@@ -34,18 +34,18 @@ fn typ2tex(path: &Path) -> PathBuf {
     }
 }
 
-fn print_pairs(pairs: Pairs<Rule>) -> () {
-    fn print_depth(pairs: Pairs<Rule>, depth: usize) -> () {
-        for pair in pairs {
-            let indent = "   ".repeat(depth);
-            println!("{indent}{:?}", pair.as_rule());
-            print_depth(pair.into_inner(), depth + 1);
-        }
-    }
-    print_depth(pairs, 0)
-}
+// fn print_pairs(pairs: Pairs<Rule>) -> () {
+//     fn print_depth(pairs: Pairs<Rule>, depth: usize) -> () {
+//         for pair in pairs {
+//             let indent = "   ".repeat(depth);
+//             println!("{indent}{:?}", pair.as_rule());
+//             print_depth(pair.into_inner(), depth + 1);
+//         }
+//     }
+//     print_depth(pairs, 0)
+// }
 
-fn explore(pairs: Pairs<Rule>) -> Document {
+fn explore(pairs: Pairs<Rule>, citations: HashSet<String>, verbose: bool) -> Document {
     Document::default()
 }
 
@@ -117,11 +117,10 @@ fn main() -> Result<()> {
         None => HashSet::<String>::new(),
     };
 
-    explore(pairs);
+    let document = explore(pairs, citations, verbose);
 
-    // TODO change for content
     // Write the latex file
-    fs::write(&latex_path, &content)
+    fs::write(&latex_path, document.to_latex(template))
         .with_context(|| format!("Failed to write file: {:?}", latex_path))?;
 
     Ok(())

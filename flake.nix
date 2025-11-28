@@ -14,6 +14,18 @@
         pkgs = import nixpkgs {
           inherit system overlays;
         };
+
+        typst2latex = pkgs.rustPlatform.buildRustPackage {
+          pname = "typst2latex";
+          version = "0.1.0";
+          src = ./.;
+          cargoLock = {
+            lockFile = ./Cargo.lock;
+          };
+          nativeBuildInputs = [ pkgs.pkg-config ];
+          buildInputs = [ pkgs.pandoc ];
+        };
+
       in
       {
         devShells.default = with pkgs; mkShell {
@@ -24,6 +36,9 @@
             rust-bin.beta.latest.default
           ];
         };
+
+        packages = { default = typst2latex; };
+
       }
     );
 }

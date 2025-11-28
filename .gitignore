@@ -22,6 +22,9 @@ target
 
 *.bib
 *.typ
+*.zip
+*.png
+*.svg
 *.tex
 *.bcf*
 *.pdf

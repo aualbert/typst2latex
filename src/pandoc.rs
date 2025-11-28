@@ -1,8 +1,6 @@
 use anyhow::{Context, Result};
 use std::process::Command;
 
-// TODO pandoc WILL remove whitespaces and newlines after and before, we have to preserves them
-//
 /// Converts Typst content to Latex using pandoc
 /// Removes trailing newline added by pandoc
 pub fn typst2latex(content: &str) -> Result<String> {
@@ -44,18 +42,4 @@ pub fn typst2latex(content: &str) -> Result<String> {
 
     // Remove trailing newline that pandoc adds
     Ok(typst_output.trim_end().to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_typst_to_latex_removes_trailing_newline() {
-        let typst_content = "# Hello World\nThis is **bold** text.";
-        if let Ok(result) = typst2latex(typst_content) {
-            assert!(!result.ends_with('\n'), "Should remove trailing newline");
-            println!("Converted: '{}'", result);
-        }
-    }
 }

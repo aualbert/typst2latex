@@ -93,6 +93,7 @@ fn process_text(pair: Pair<Rule>) -> Vec<Text> {
 
 fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
     let mut content = String::new();
+    let mut document = Document::default();
 
     fn get_str(pair: Pair<Rule>, citations: &HashSet<String>) -> Result<String> {
         to_latex(process_text(pair), citations)
@@ -160,7 +161,7 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
                             ttype = p.as_str().to_string();
                         }
                         Rule::th_title => {
-                            title = gis!(p);
+                            title = format!("{{{}}}", gis!(p));
                         }
                         Rule::th_content => {
                             tcontent = gis!(p);
@@ -171,17 +172,24 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
                         _ => {}
                     }
                 }
-                // TODO fix label and title
-                content += &format!(
-                    "\\begin{{{}}}\n{}\\caption{{{}}}{}\\end{{{}}}\n",
-                    ttype, tcontent, title, label, ttype
-                );
+                content +=
+                    &format!("\\begin{{{ttype}}}{title}{label}\n{tcontent}\n\\end{{{ttype}}}\n");
+            }
+            Rule::header => {
+                for p in pair.into_inner() {
+                    match p.as_rule() {
+                        Rule::my_title => document.title = Some(gis!(p)),
+                        Rule::my_abstract => document.abstractt = Some(gis!(p)),
+                        Rule::my_name => document.authors = Some(p.as_str().into()),
+                        Rule::my_bib => document.bibliography = Some(gis!(p)),
+                        _ => {}
+                    }
+                }
             }
             _ => {}
         }
     }
 
-    let mut document = Document::default();
     document.content = content;
     Ok(document)
 }

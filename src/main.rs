@@ -222,6 +222,13 @@ fn main() -> Result<()> {
                 .long("template")
                 .help("The latex template to use"),
         )
+        .arg(
+            Arg::new("backend")
+                .long("backend")
+                .help("The backend for converting typst to latex")
+                .value_parser(["pandoc"])
+                .default_value("pandoc"),
+        )
         .get_matches();
 
     let typst_path = Path::new(matches.get_one::<String>("input").unwrap());

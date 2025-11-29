@@ -23,13 +23,9 @@ My not-translatable typst code
 `⏎`  
 // END NO TEX  
 `⏎`  
-// BEGIN TEX  
-`⏎`  
-/\*  
+/* BEGIN TEX  
 My manual Latex translation  
-\*/  
-`⏎`  
-// END NO TEX  
+\END TEX */  
 &nbsp;  
 * Grid inside figures should be places inside brackets with "\#grid"
 

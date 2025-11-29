@@ -6,10 +6,11 @@ use std::collections::HashSet;
 pub enum Text {
     Raw(String),
     Citation(String),
+    Latex(String),
 }
 
 fn unique_id(count: usize) -> String {
-    format!("citation{}citation", count)
+    format!("identifier{}identifier", count)
 }
 
 fn key_to_str(key: &str, citations: &HashSet<String>) -> String {
@@ -36,12 +37,20 @@ pub fn to_latex(vec: Vec<Text>, citations: &HashSet<String>) -> Result<String> {
     let mut latex_string = typst2latex(&id_string)
         .with_context(|| format!("failed to convert to latex: {:?}", id_string))?;
 
-    let mut cite_count = 0;
+    let mut count = 0;
     for text in vec {
-        if let Text::Citation(key) = text {
-            cite_count += 1;
-            latex_string =
-                latex_string.replace(&unique_id(cite_count), &key_to_str(&key, citations));
+        match text {
+            Text::Citation(key) => {
+                count += 1;
+                latex_string =
+                    latex_string.replace(&unique_id(count), &key_to_str(&key, citations));
+            }
+            Text::Latex(content) => {
+                count += 1;
+                latex_string = latex_string.replace(&unique_id(count), &content);
+            }
+
+            _ => (),
         }
     }
     Ok(latex_string)
@@ -49,16 +58,16 @@ pub fn to_latex(vec: Vec<Text>, citations: &HashSet<String>) -> Result<String> {
 
 fn build_id_string(vec: &Vec<Text>) -> String {
     let mut result = String::new();
-    let mut cite_count = 0;
+    let mut count = 0;
 
     for text in vec {
         match text {
             Text::Raw(content) => {
                 result.push_str(&content);
             }
-            Text::Citation(_) => {
-                cite_count += 1;
-                let unique_id = unique_id(cite_count);
+            Text::Citation(_) | Text::Latex(_) => {
+                count += 1;
+                let unique_id = unique_id(count);
                 result.push_str(&unique_id);
             }
         }

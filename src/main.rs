@@ -44,6 +44,13 @@ fn process_text(pair: Pair<Rule>) -> Vec<Text> {
             Rule::newline => {
                 current.push('\n');
             }
+            Rule::comment_notex => {}
+            Rule::latex_content => {
+                if !current.is_empty() {
+                    result.push(Text::Raw(std::mem::take(current)));
+                }
+                result.push(Text::Latex(pair.as_str().into()));
+            }
             Rule::raw_text | Rule::math | Rule::grid => {
                 current.push_str(pair.as_str());
             }
@@ -124,10 +131,11 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
     for pair in pairs {
         match pair.as_rule() {
             Rule::newline => content += "\n",
+            Rule::line => content += &gs!(pair),
+            Rule::latex_content => content += pair.as_str(),
             Rule::section => content += &format!("\\section{{{}}}\n", gis!(pair)),
             Rule::subsection => content += &format!("\\subsection{{{}}}\n", gis!(pair)),
             Rule::subsubsection => content += &format!("\\subsubsection{{{}}}\n", gis!(pair)),
-            Rule::line => content += &gs!(pair),
             Rule::proof => content += &format!("\\begin{{proof}}{}\\end{{proof}}", gis!(pair)),
             Rule::figure => {
                 let mut fcontent = String::new();

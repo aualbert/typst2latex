@@ -1,5 +1,5 @@
 program = _{ SOI ~ stmt* ~ EOI }
-stmt = _{ comment | level | env | header | command | line | newline }
+stmt = _{ comment_tex | comment_notex | level | env | header | command | line | newline }
 
 level = _{ subsubsection | subsection | section }
 section = { "=" ~ line }
@@ -46,12 +46,12 @@ short_cmd = _{ "#" ~ cmd_type ~ line ~ "\n" }
 long_cmd = _{ "#" ~ cmd_type ~ char+ ~ "(" ~ text ~ ")" }
 cmd_type = _{ "set" | "show" | "import" | "let" | "pagebreak" | "outline" }
 
-text = { (grid | citation | raw_text | paren_text | brack_text | quote_text | math | newline)+ }
+text = { (comment_tex | comment_notex | grid | citation | raw_text | paren_text | brack_text | quote_text | math | newline)+ }
 paren_text = { "(" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ ")" } 
 brack_text = { "[" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ "]" } 
 quote_text = { "\"" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ "\"" } 
 
-line = { (grid | citation | raw_text | paren_line | brack_line | quote_line | math)+ }
+line = { (comment_tex | comment_notex | grid | citation | raw_text | paren_line | brack_line | quote_line | math)+ }
 paren_line = { "(" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ ")" }
 brack_line = { "[" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ "]" }
 quote_line = { "\"" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ "\"" }
@@ -60,8 +60,10 @@ grid = { "#grid(" ~ text ~ ")" }
 
 math = @{ "$" ~ (!"$" ~ ANY)* ~ "$" ~ WHITESPACE? }
 
-comment = { ("/* BEGIN TEX"~"\n" ~ latex_content ~ "END TEX */") | ("// BEGIN NO TEX"~"\n" ~ (!"// END NO TEX" ~ ANY)* ~ "// END NO TEX") | ("//" ~ all_char*) | ("/*" ~ (!"*/" ~ ANY) * ~ "*/") }
-latex_content = { (!"END TEX */" ~ ANY)* }
+comment = { ("//" ~ all_char*) | ("/*" ~ (!"*/" ~ ANY) * ~ "*/") }
+comment_notex = { "// BEGIN NO TEX" ~ (!"// END NO TEX" ~ ANY)* ~ "// END NO TEX" }
+comment_tex = _{ "/*" ~ "BEGIN TEX" ~ latex_content ~ "END TEX" ~ "*/" } 
+latex_content = { (!"END TEX" ~ ANY)* }
 
 citation = @{ "@" ~ ASCII_ALPHANUMERIC+ ~ WHITESPACE? }
 

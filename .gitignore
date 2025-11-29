@@ -25,8 +25,8 @@ target
 *.zip
 *.png
 *.svg
-*.tex
-!template.tex
+main.tex
+temp.tex
 *.bcf*
 *.pdf
 *.acn

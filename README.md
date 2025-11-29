@@ -3,8 +3,7 @@
 Typst2Latex is an automatic converter from unequivocal-ams typst documents to latex. 
 
 It should be run in terminal with the following command :  
-python3 typst2latex.py -v my\_typst\_file.typ -b my\_refs.bib  
--v is the verböse option  
+cargo run main.typ -b refs.bib
 -b allows to add a bib file to tell apart the typst references that links to environments of the current documents to the one that link to a bibliographic reference since both of them are written with @ in typst.  
 
 * A line should be skiped at the end of each environment.

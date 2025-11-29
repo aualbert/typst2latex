@@ -19,7 +19,8 @@ use std::{
 };
 use text::{Text, to_latex};
 
-const DEFAULT_TEMPLATE: &str = include_str!("template.tex");
+const DEFAULT_TEMPLATE: &str = include_str!("templates/default.tex");
+const EMPTY_TEMPLATE: &str = include_str!("templates/empty.tex");
 
 #[derive(Parser)]
 #[grammar = "grammar.pest"]
@@ -194,6 +195,24 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
     Ok(document)
 }
 
+#[derive(Debug, Clone)]
+pub enum TemplateOption {
+    Default,
+    Empty,
+    Custom(PathBuf),
+}
+
+fn template_parser(input: &str) -> Result<TemplateOption> {
+    match input {
+        "default" => Ok(TemplateOption::Default),
+        "empty" => Ok(TemplateOption::Empty),
+        custom => {
+            let path = PathBuf::from(custom);
+            Ok(TemplateOption::Custom(path))
+        }
+    }
+}
+
 fn main() -> Result<()> {
     let matches = Command::new("Typst Parser")
         .version("1.0")
@@ -220,7 +239,9 @@ fn main() -> Result<()> {
             Arg::new("template")
                 .short('t')
                 .long("template")
-                .help("The latex template to use"),
+                .help("The latex template to use. Either \"default\", \"empty\", or a filepath")
+                .value_parser(template_parser)
+                .default_value("default"),
         )
         .arg(
             Arg::new("backend")
@@ -232,7 +253,7 @@ fn main() -> Result<()> {
         .get_matches();
 
     let typst_path = Path::new(matches.get_one::<String>("input").unwrap());
-    let template_path = matches.get_one::<String>("template").map(Path::new);
+    let template = matches.get_one::<TemplateOption>("template").unwrap();
     let bib_path = matches.get_one::<String>("bib").map(Path::new);
     let latex_path = matches
         .get_one::<&str>("output")
@@ -246,17 +267,19 @@ fn main() -> Result<()> {
         .with_context(|| "Failed to parse input according to grammar")?;
 
     // Read the latex template
-    let template = match template_path {
-        Some(path) => fs::read_to_string(path)
-            .with_context(|| format!("Failed to read file: {:?}", typst_path))?,
-        None => DEFAULT_TEMPLATE.into(),
+    let template = match template {
+        TemplateOption::Default => DEFAULT_TEMPLATE.into(),
+        TemplateOption::Empty => EMPTY_TEMPLATE.into(),
+        TemplateOption::Custom(path) => {
+            fs::read_to_string(path).with_context(|| format!("Failed to read file: {:?}", path))?
+        }
     };
 
     // Read the bib file
     let citations = match bib_path {
         Some(path) => parse_bib(
             &fs::read_to_string(path)
-                .with_context(|| format!("Failed to read file: {:?}", typst_path))?,
+                .with_context(|| format!("Failed to read file: {:?}", bib_path))?,
         ),
         None => HashSet::<String>::new(),
     };

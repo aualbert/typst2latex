@@ -22,7 +22,7 @@ fn key_to_str(key: &str, citations: &HashSet<String>) -> String {
     let citation = if citations.contains(clean_key) {
         format!("\\cite{{{}}}", clean_key.trim())
     } else {
-        format!("\\ref{{{}}}", clean_key.trim())
+        format!("\\thref{{{}}}", clean_key.trim())
     };
 
     if has_trailing_space {

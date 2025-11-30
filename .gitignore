@@ -20,14 +20,15 @@ target
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+svg-inkscape/*
 *.bib
 *.typ
 *.zip
 *.png
 *.jpg
 *.svg
-main.tex
-temp.tex
+*.tex
+!/src/templates/*.tex
 *.bcf*
 *.pdf
 *.acn
@@ -35,7 +36,7 @@ temp.tex
 *.alg
 *.aux
 *.bak
-*.bbl
+*.bbl*
 *.bcf
 *.blg
 *.brf

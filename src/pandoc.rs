@@ -81,7 +81,7 @@ fn unicode2tex(c: char) -> Option<&'static str> {
         'σ' => Some("\\sigma"),
         'τ' => Some("\\tau"),
         'υ' => Some("\\upsilon"),
-        'φ' => Some("\\phi"),
+        'φ' => Some("\\varphi"),
         'χ' => Some("\\chi"),
         'ψ' => Some("\\psi"),
         'ω' => Some("\\omega"),
@@ -101,7 +101,7 @@ fn unicode2tex(c: char) -> Option<&'static str> {
         'Μ' => Some("\\Mu"),
         'Ν' => Some("\\Nu"),
         'Ξ' => Some("\\Xi"),
-        'Ο' => Some("\\Omicron"),
+        'Ο' => Some("0"),
         'Π' => Some("\\Pi"),
         'Ρ' => Some("\\Rho"),
         'Σ' => Some("\\Sigma"),
@@ -118,7 +118,7 @@ fn unicode2tex(c: char) -> Option<&'static str> {
         'ϖ' => Some("\\varpi"),
         'ϱ' => Some("\\varrho"),
         'ς' => Some("\\varsigma"),
-        'ϕ' => Some("\\varphi"),
+        'ϕ' => Some("\\phi"),
 
         _ => None,
     }

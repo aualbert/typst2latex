@@ -145,7 +145,7 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
             Rule::section => content += &format!("\\section{{{}}}\n", gis!(pair)),
             Rule::subsection => content += &format!("\\subsection{{{}}}\n", gis!(pair)),
             Rule::subsubsection => content += &format!("\\subsubsection{{{}}}\n", gis!(pair)),
-            Rule::proof => content += &format!("\\begin{{proof}}{}\\end{{proof}}", gis!(pair)),
+            Rule::proof => content += &format!("\\begin{{proof}} {} \\end{{proof}}", gis!(pair)),
             Rule::include => {
                 content += &format!("\\input({})", pair.as_str().replace("typ", "tex"))
             }
@@ -194,7 +194,7 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
                     }
                 }
                 content +=
-                    &format!("\\begin{{{ttype}}}{title}{label}\n{tcontent}\n\\end{{{ttype}}}\n");
+                    &format!("\\begin{{{ttype}}}{title} {label}\n{tcontent}\n\\end{{{ttype}}}\n");
             }
             Rule::header => {
                 for p in pair.into_inner() {

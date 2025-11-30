@@ -19,10 +19,10 @@ fn key_to_str(key: &str, citations: &HashSet<String>) -> String {
     // Check for trailing space
     let has_trailing_space = key.ends_with(' ');
 
-    let citation = if citations.contains(clean_key) {
+    let citation = if citations.contains(clean_key.trim()) {
         format!("\\cite{{{}}}", clean_key.trim())
     } else {
-        format!("\\thref{{{}}}", clean_key.trim())
+        format!("\\autoref{{{}}}", clean_key.trim())
     };
 
     if has_trailing_space {

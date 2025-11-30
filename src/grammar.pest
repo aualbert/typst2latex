@@ -1,5 +1,5 @@
 program = _{ SOI ~ stmt* ~ EOI }
-stmt = _{ comment_tex | comment_notex | level | env | header | command | line | newline }
+stmt = _{ comment_tex | comment_notex | includec | level | env | header | command | line | newline }
 
 level = _{ subsubsection | subsection | section }
 section = { "=" ~ line }
@@ -23,6 +23,10 @@ caption = { text }
 labell = _{ "<" ~ label ~ ">" }
 label = { ASCII_ALPHANUMERIC+ }
 
+includec = _{ "#include(" ~ include ~ ")" }
+include = { text }
+
+// TODO investigate the ""
 // Specific format for header
 header = {"#show" ~ ":" ~ "ams-article.with(" ~ ( hd_title | hd_abstract | hd_bib | hd_authors | "\n" )+ ~ ")" }
 hd_title = _{ "title" ~ ":" ~ "[" ~ my_title ~ "]" ~ ","? }
@@ -46,12 +50,12 @@ short_cmd = _{ "#" ~ cmd_type ~ line ~ "\n" }
 long_cmd = _{ "#" ~ cmd_type ~ char+ ~ "(" ~ text ~ ")" }
 cmd_type = _{ "set" | "show" | "import" | "let" | "pagebreak" | "outline" }
 
-text = { (comment_tex | comment_notex | grid | citation | raw_text | paren_text | brack_text | quote_text | math | newline)+ }
+text = { (comment_tex | comment_notex  | includec | grid | citation | raw_text | paren_text | brack_text | quote_text | math | newline)+ }
 paren_text = { "(" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ ")" } 
 brack_text = { "[" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ "]" } 
 quote_text = { "\"" ~ (citation | raw_text | paren_text | brack_text | quote_text | math | newline)* ~ "\"" } 
 
-line = { (comment_tex | comment_notex | grid | citation | raw_text | paren_line | brack_line | quote_line | math)+ }
+line = { (comment_tex | comment_notex | includec | grid | citation | raw_text | paren_line | brack_line | quote_line | math)+ }
 paren_line = { "(" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ ")" }
 brack_line = { "[" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ "]" }
 quote_line = { "\"" ~ (citation | raw_text | paren_line | brack_line | quote_line | math)* ~ "\"" }

@@ -51,6 +51,15 @@ fn process_text(pair: Pair<Rule>) -> Vec<Text> {
                 }
                 result.push(Text::Latex(pair.as_str().into()));
             }
+            Rule::include => {
+                if !current.is_empty() {
+                    result.push(Text::Raw(std::mem::take(current)));
+                }
+                result.push(Text::Latex(format!(
+                    "\\input({})",
+                    pair.as_str().replace("typ", "tex")
+                )))
+            }
             Rule::raw_text | Rule::math | Rule::grid => {
                 current.push_str(pair.as_str());
             }
@@ -137,6 +146,9 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
             Rule::subsection => content += &format!("\\subsection{{{}}}\n", gis!(pair)),
             Rule::subsubsection => content += &format!("\\subsubsection{{{}}}\n", gis!(pair)),
             Rule::proof => content += &format!("\\begin{{proof}}{}\\end{{proof}}", gis!(pair)),
+            Rule::include => {
+                content += &format!("\\input({})", pair.as_str().replace("typ", "tex"))
+            }
             Rule::figure => {
                 let mut fcontent = String::new();
                 let mut caption = String::new();

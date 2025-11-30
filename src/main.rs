@@ -182,7 +182,7 @@ fn explore(pairs: Pairs<Rule>, citations: HashSet<String>) -> Result<Document> {
                             ttype = p.as_str().to_string();
                         }
                         Rule::th_title => {
-                            title = format!("{{{}}}", gis!(p));
+                            title = format!("[{}]", gis!(p));
                         }
                         Rule::th_content => {
                             tcontent = gis!(p);

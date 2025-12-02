@@ -1,30 +1,68 @@
 # Typst2Latex 
 
-Typst2Latex is an automatic converter from unequivocal-ams typst documents to latex. 
+Convert Typst documents written using the unequivocal-ams template to human-friendly Latex. This uses a custom Typst parser to produce a parse tree in which useful environements (e.g. theorem) are preserved. A backend (currently pandoc only) is then used to convert the leafs of the parse tree (typically math formulas). This relies on certain assumptions about the structure of your Typst code, see [Assumptions](#assumptions).
 
-It should be run in terminal with the following command :  
-cargo run main.typ -b refs.bib
--b allows to add a bib file to tell apart the typst references that links to environments of the current documents to the one that link to a bibliographic reference since both of them are written with @ in typst.  
+## Features
 
-* A line should be skiped at the end of each environment.
-* theorem-like environments should follow the following structure  
-&nbsp;  
-\#example[ExampleTitle  
-`⏎`  
-ExampleContent  
+- Preserves figure and theorem-like environnements.
+- Distinguish between references and citations using an optionnal bibtex file.
+- Special directives for ignoring or adding code during conversion:
+```typst
+\\ BEGIN NO TEX
+Typst content to ignore
+\\ END NO TEX
+
+\* BEGIN TEX
+Latex content to add 
+END TEX */
+```
+And much more to come!
+
+## Roadmap
+
+TODO
+
+## Installation 
+
+Installation is done using cargo: 
+
+```bash
+cargo install --git https://github.com/aualbert/typst2latex
+```
+
+Nix users can also install or run the program directly:
+
+```bash
+nix run github.com/aualbert/typst2latex
+```
+
+## Running
+
+Typst2Latex requires Pandoc to be installed. See the list of options provided by the program. Typically:
+
+```bash
+typst2latex main.typ -b refs.bib
+```
+
+## Building
+
+Building is done using cargo:
+
+```bash
+git clone https://github.com/aualbert/typst2latex
+cd typst2latex
+cargo build
+```
+
+For Nix users, a flake is provided. Activate it using `nix develop`.
+
+## Assumptions
+
+- Theorem-like environnement can be given a title using the following syntax:
+```typst
+\#theorem[my_title⏎
+my_content
 ]
+```
 
-* Some typst environment might not be translated with this method. In this case one can escape some Latex code in the typst document with the following syntax  
-&nbsp;  
-// BEGIN NO TEX  
-`⏎`  
-My not-translatable typst code  
-`⏎`  
-// END NO TEX  
-`⏎`  
-/* BEGIN TEX  
-My manual Latex translation  
-\END TEX */  
-&nbsp;  
-* Grid inside figures should be places inside brackets with "\#grid"
-
+- Body arguments in functions should use brackets as much as possible, e.g. `\#figure([#grid ...])` instead of `\#figure(grid ...)`. 

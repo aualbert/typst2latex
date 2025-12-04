@@ -4,37 +4,62 @@
 \usepackage{amsmath}
 \usepackage{amsfonts}
 \usepackage{amssymb}
-\usepackage[standard, thref, hyperref]{ntheorem}
+\usepackage{amsthm}
+\usepackage{keytheorems}
+
 \usepackage{hyperref}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage[margin=1.5cm, top=3cm, bottom=2cm]{geometry}
+
 \usepackage{svg}
 \usepackage[margin=1.5cm, top=3cm, bottom=2cm]{geometry}
 \usepackage{longtable}
 \usepackage{booktabs}
 
-\usepackage{biblatex}
+\usepackage[backend=biber, style=numeric]{biblatex}
 \addbibresource{%bibliography%}
 
-\newtheorem{property}{Property}
+% Defining custom amsthm environments
+\newkeytheorem{theorem}[
+name = Theorem,
+refname = {Theorem, Theorems},
+parent=section]
+\newkeytheorem{property}[
+name = Property,
+refname = {Property, Properties},
+sibling=theorem]
+\newkeytheorem{example}[
+name = Example,
+refname = {Example, Examples},
+sibling=theorem]
+\newkeytheorem{definition}[
+name = Definition,
+refname = {Definition, Definitions},
+sibling=theorem]
+\newkeytheorem{lemma}[
+name = Lemma,
+refname = {Lemma, Lemmas},
+sibling=theorem]
+
 
 % Greek uppercase letters
-\newcommand{\Alpha}{A}
-\newcommand{\Beta}{B}
-\newcommand{\Epsilon}{E}
-\newcommand{\Zeta}{Z}
-\newcommand{\Eta}{H}
-\newcommand{\Iota}{I}
-\newcommand{\Kappa}{K}
-\newcommand{\Mu}{M}
-\newcommand{\Nu}{N}
-\newcommand{\Omicron}{O}
-\newcommand{\Rho}{P}
-\newcommand{\Tau}{T}
-\newcommand{\Chi}{X}
+\newcommand{\Alpha}{\text{A}}
+\newcommand{\Beta}{\text{B}}
+\newcommand{\Epsilon}{\text{E}}
+\newcommand{\Zeta}{\text{Z}}
+\newcommand{\Eta}{\text{H}}
+\newcommand{\Iota}{\text{I}}
+\newcommand{\Kappa}{\text{K}}
+\newcommand{\Mu}{\text{M}}
+\newcommand{\Nu}{\text{N}}
+\newcommand{\Omicron}{\text{O}}
+\newcommand{\Rho}{\text{P}}
+\newcommand{\Tau}{\text{T}}
+\newcommand{\Chi}{\text{X}}
 
 % Greek lowercase letters
-\newcommand{\omicron}{o}
+\newcommand{\omicron}{\text{o}}
 
 \title{%title%}
 \author{%authors%}
